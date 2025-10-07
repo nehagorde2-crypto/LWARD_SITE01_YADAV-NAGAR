@@ -1,122 +1,275 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta charset="utf-8">
+  <title>L Ward Interactive Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet" href="css/leaflet.css">
-    <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
-    <link rel="stylesheet" href="css/L.Control.Locate.min.css">
-    <link rel="stylesheet" href="css/qgis2web.css">
-    <link rel="stylesheet" href="css/fontawesome-all.min.css">
-    <link rel="stylesheet" href="css/leaflet.photon.css">
-    <link rel="stylesheet" href="css/leaflet-measure.css">
+  <!-- Leaflet + QGIS2Web styles -->
+  <link rel="stylesheet" href="css/leaflet.css">
+  <link rel="stylesheet" href="css/qgis2web.css">
 
-    <style>
-        html, body, #map { width:100%; height:100%; margin:0; padding:0; }
-    </style>
-
-    <title>Map with UHI Overlay</title>
-</head>
-<body>
-<div id="map"></div>
-
-<script src="js/qgis2web_expressions.js"></script>
-<script src="js/leaflet.js"></script>
-<script src="js/L.Control.Layers.Tree.min.js"></script>
-<script src="js/L.Control.Locate.min.js"></script>
-<script src="js/leaflet.rotatedMarker.js"></script>
-<script src="js/leaflet.pattern.js"></script>
-<script src="js/leaflet-hash.js"></script>
-<script src="js/Autolinker.min.js"></script>
-<script src="js/rbush.min.js"></script>
-<script src="js/labelgun.min.js"></script>
-<script src="js/labels.js"></script>
-<script src="js/leaflet.photon.js"></script>
-<script src="js/leaflet-measure.js"></script>
-
-<!-- Data -->
-<script src="data/Lwardboundary_1.js"></script>
-<script src="data/roads_merged_3.js"></script>
-<script src="data/cold_hot_neighbourhood_nagar_4.js"></script>
-<script src="data/cold_hot_neighbourhood_5.js"></script>
-<script src="data/building_140725_6.js"></script>
-<script src="data/vegetation_7.js"></script>
-
-<script>
-var map = L.map('map', {zoomControl:false, maxZoom:28, minZoom:10})
-    .fitBounds([[19.10370203749666,72.87981991479478],[19.11931231922223,72.90719733841283]]);
-var hash = new L.Hash(map);
-map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
-
-var autolinker = new Autolinker({truncate:{length:30,location:'smart'}});
-
-// Zoom and locate controls
-L.control.zoom({position:'topleft'}).addTo(map);
-L.control.locate({locateOptions:{maxZoom:19}}).addTo(map);
-var measureControl = new L.Control.Measure({
-    position: 'topleft',
-    primaryLengthUnit: 'meters',
-    secondaryLengthUnit: 'kilometers',
-    primaryAreaUnit: 'sqmeters',
-    secondaryAreaUnit: 'hectares'
-});
-measureControl.addTo(map);
-document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML='';
-document.getElementsByClassName('leaflet-control-measure-toggle')[0].className+=' fas fa-ruler';
-
-var bounds_group = new L.featureGroup([]);
-
-// Base Google Satellite
-map.createPane('pane_GoogleSatellite_0');
-map.getPane('pane_GoogleSatellite_0').style.zIndex = 400;
-var layer_GoogleSatellite_0 = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-    pane:'pane_GoogleSatellite_0', opacity:1.0, minZoom:10, maxZoom:28
-}).addTo(map);
-
-// --- Add all vector layers (roads, buildings, vegetation, cold/hot zones) ---
-
-// Example: Buildings
-map.createPane('pane_building_140725_6'); 
-map.getPane('pane_building_140725_6').style.zIndex = 410; // above base
-map.getPane('pane_building_140725_6').style['mix-blend-mode'] = 'normal';
-
-function style_building(feature) {
-    var fillColor='rgba(43,131,186,1.0)'; // default
-    switch(String(feature.properties['bldg_use'])){
-        case 'commercial': fillColor='rgba(191,145,85,1.0)'; break;
-        case 'hospital': fillColor='rgba(232,91,59,1.0)'; break;
-        case 'industrial': fillColor='rgba(155,111,91,1.0)'; break;
-        case 'mixed': fillColor='rgba(227,203,193,1.0)'; break;
-        case 'res': fillColor='rgba(197,197,197,1.0)'; break;
-        case 'resi_construction': fillColor='rgba(236,247,185,1.0)'; break;
-        case 'residential': fillColor='rgba(199,232,173,1.0)'; break;
-        case 'temple': fillColor='rgba(157,211,166,1.0)'; break;
-        case 'uc': fillColor='rgba(100,171,176,1.0)'; break;
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
     }
-    return {pane:'pane_building_140725_6', opacity:1, color:'rgba(255,255,255,1.0)', weight:1,
-            fill:true, fillOpacity:1, fillColor:fillColor, interactive:true};
-}
 
-var layer_buildings_6 = new L.geoJson(json_building_140725_6, {
-    style: style_building
-}).addTo(map);
-bounds_group.addLayer(layer_buildings_6);
+    /* --- Collapsible Sidebar --- */
+    #sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 250px;
+      height: 100%;
+      background: #ffffff;
+      border-right: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.15);
+      transition: transform 0.3s ease;
+    }
 
-// TODO: Add other vector layers like roads, vegetation, cold/hot zones in similar way
-// Make sure pane zIndex > 400 (above base)
+    #sidebar.collapsed {
+      transform: translateX(-250px);
+    }
 
-// --- UHI overlay from old code ---
-map.createPane('pane_Lwarduhi_2');
-map.getPane('pane_Lwarduhi_2').style.zIndex = 405; // below buildings/roads
-var img_Lwarduhi_2 = 'data/Lwarduhi_2.png';
-var img_bounds_Lwarduhi_2 = [[19.047338295,72.863520505],[19.129264649,72.908256606]];
-var layer_Lwarduhi_2 = L.imageOverlay(img_Lwarduhi_2, img_bounds_Lwarduhi_2, {pane:'pane_Lwarduhi_2', opacity:0.7}).addTo(map);
+    #toggle-btn {
+      position: absolute;
+      top: 15px;
+      left: 260px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 6px 10px;
+      cursor: pointer;
+      z-index: 1100;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    }
 
-L.ImageOverlay.include({getBounds:function(){return this._bounds;}});
-</script>
+    #toggle-btn:hover {
+      background: #f0f0f0;
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 250px;
+      transition: left 0.3s ease;
+    }
+
+    #map.fullwidth {
+      left: 0;
+    }
+
+    #sidebar h3 {
+      margin: 10px 0;
+      font-size: 16px;
+      color: #333;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
+    }
+
+    #infoPanel {
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
+    }
+
+    #infoContent {
+      font-size: 14px;
+      color: #555;
+      margin-top: 5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    table td {
+      padding: 3px 5px;
+      border-bottom: 1px solid #eee;
+    }
+
+    table td:first-child {
+      font-weight: 600;
+      color: #333;
+    }
+
+    /* Small screens: start collapsed */
+    @media (max-width: 768px) {
+      #sidebar {
+        transform: translateX(-250px);
+      }
+      #map {
+        left: 0;
+      }
+      #toggle-btn {
+        left: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Collapsible Sidebar -->
+  <div id="sidebar">
+    <h3>Layers</h3>
+    <div id="layerList">
+      <label><input type="checkbox" id="chk_boundary" checked> L Ward Boundary</label><br>
+      <label><input type="checkbox" id="chk_roads" checked> Roads</label><br>
+      <label><input type="checkbox" id="chk_hotnagar" checked> Cold/Hot Nagar</label><br>
+      <label><input type="checkbox" id="chk_hot" checked> Cold/Hot Zones</label><br>
+      <label><input type="checkbox" id="chk_buildings" checked> Buildings</label><br>
+      <label><input type="checkbox" id="chk_vegetation" checked> Vegetation</label><br>
+    </div>
+
+    <div id="infoPanel">
+      <h3>Feature Info</h3>
+      <div id="infoContent">Click on any feature to view attributes.</div>
+    </div>
+  </div>
+
+  <button id="toggle-btn">☰ Layers</button>
+  <div id="map"></div>
+
+  <!-- Scripts -->
+  <script src="js/qgis2web_expressions.js"></script>
+  <script src="js/leaflet.js"></script>
+  <script src="js/L.Control.Layers.Tree.min.js"></script>
+  <script src="js/L.Control.Locate.min.js"></script>
+  <script src="js/leaflet.rotatedMarker.js"></script>
+  <script src="js/leaflet.pattern.js"></script>
+  <script src="js/leaflet-hash.js"></script>
+  <script src="js/Autolinker.min.js"></script>
+  <script src="js/rbush.min.js"></script>
+  <script src="js/labelgun.min.js"></script>
+  <script src="js/labels.js"></script>
+  <script src="js/leaflet.photon.js"></script>
+  <script src="js/leaflet-measure.js"></script>
+
+  <!-- Data Layers -->
+  <script src="data/Lwardboundary_1.js"></script>
+  <script src="data/roads_merged_3.js"></script>
+  <script src="data/cold_hot_neighbourhood_nagar_4.js"></script>
+  <script src="data/cold_hot_neighbourhood_5.js"></script>
+  <script src="data/building_140725_6.js"></script>
+  <script src="data/vegetation_7.js"></script>
+
+  <script>
+    // Map initialization
+    var map = L.map('map', {
+      zoomControl: true,
+      maxZoom: 28,
+      minZoom: 1
+    }).setView([19.06, 72.88], 13);
+
+    // Basemap
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // --- Custom Styled Layers ---
+    var layer_Lwardboundary = new L.geoJson(json_Lwardboundary_1, {
+      style: { color: "red", weight: 2, fillOpacity: 0 }
+    });
+
+    var layer_Roads = new L.geoJson(json_roads_merged_3, {
+      style: { color: "black", weight: 1.5 }
+    });
+
+    var layer_HotNagar = new L.geoJson(json_cold_hot_neighbourhood_nagar_4, {
+      style: { color: "#ff7f00", weight: 1 }
+    });
+
+    var layer_Hot = new L.geoJson(json_cold_hot_neighbourhood_5, {
+      style: { color: "#ffcc00", weight: 1 }
+    });
+
+    var layer_Buildings = new L.geoJson(json_building_140725_6, {
+      style: { color: "#666666", fillColor: "#999999", fillOpacity: 0.8, weight: 0.5 }
+    });
+
+    var layer_Vegetation = new L.geoJson(json_vegetation_7, {
+      pointToLayer: function(feature, latlng) {
+        return L.circleMarker(latlng, {
+          radius: 4,
+          fillColor: "green",
+          color: "#006400",
+          weight: 0.5,
+          opacity: 1,
+          fillOpacity: 0.8
+        });
+      },
+      style: { color: "green" }
+    });
+
+    // Add all initially
+    map.addLayer(layer_Lwardboundary);
+    map.addLayer(layer_Roads);
+    map.addLayer(layer_HotNagar);
+    map.addLayer(layer_Hot);
+    map.addLayer(layer_Buildings);
+    map.addLayer(layer_Vegetation);
+
+    // --- Layer Toggle ---
+    const toggleLayer = (checkboxId, layer) => {
+      document.getElementById(checkboxId).addEventListener("change", function() {
+        if (this.checked) map.addLayer(layer);
+        else map.removeLayer(layer);
+      });
+    };
+
+    toggleLayer("chk_boundary", layer_Lwardboundary);
+    toggleLayer("chk_roads", layer_Roads);
+    toggleLayer("chk_hotnagar", layer_HotNagar);
+    toggleLayer("chk_hot", layer_Hot);
+    toggleLayer("chk_buildings", layer_Buildings);
+    toggleLayer("chk_vegetation", layer_Vegetation);
+
+    // --- Feature Info Panel ---
+    function showFeatureInfo(props) {
+      let html = "<table>";
+      for (let key in props) {
+        html += `<tr><td>${key}</td><td>${props[key]}</td></tr>`;
+      }
+      html += "</table>";
+      document.getElementById("infoContent").innerHTML = html;
+    }
+
+    function attachClickInfo(layerGroup) {
+      layerGroup.eachLayer(function(layer) {
+        layer.on('click', function(e) {
+          showFeatureInfo(layer.feature.properties);
+        });
+      });
+    }
+
+    attachClickInfo(layer_Lwardboundary);
+    attachClickInfo(layer_Roads);
+    attachClickInfo(layer_HotNagar);
+    attachClickInfo(layer_Hot);
+    attachClickInfo(layer_Buildings);
+    attachClickInfo(layer_Vegetation);
+
+    // --- Collapsible Sidebar Button ---
+    const sidebar = document.getElementById("sidebar");
+    const mapDiv = document.getElementById("map");
+    const toggleBtn = document.getElementById("toggle-btn");
+
+    toggleBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("collapsed");
+      mapDiv.classList.toggle("fullwidth");
+      // reposition button when collapsed
+      toggleBtn.style.left = sidebar.classList.contains("collapsed") ? "10px" : "260px";
+    });
+  </script>
 </body>
 </html>
