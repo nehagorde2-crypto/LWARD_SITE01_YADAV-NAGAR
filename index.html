@@ -1,217 +1,120 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>Customized L Ward Map</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
 <link rel="stylesheet" href="css/leaflet.css">
 <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+<link rel="stylesheet" href="css/L.Control.Locate.min.css">
+<link rel="stylesheet" href="css/qgis2web.css">
+<link rel="stylesheet" href="css/fontawesome-all.min.css">
 <link rel="stylesheet" href="css/leaflet-measure.css">
 <style>
-  html, body, #map {
-    width: 100%;
+html, body {
     height: 100%;
     margin: 0;
-  }
-
-  /* Sidebar styling */
-  #sidebar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 270px;
-    height: 100%;
-    background: rgba(255,255,255,0.95);
-    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
-    z-index: 1000;
-    overflow-y: auto;
-    padding: 10px 15px;
-    transition: left 0.3s ease;
-  }
-
-  #sidebar.collapsed {
-    left: -270px;
-  }
-
-  #toggleSidebar {
+    padding: 0;
+}
+#map { 
+    position: absolute; 
+    top: 0; 
+    bottom: 0; 
+    left: 0; 
+    right: 0; 
+}
+#sidebar {
     position: absolute;
     top: 10px;
     left: 10px;
-    z-index: 1100;
-    background: #333;
-    color: white;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-
-  #infoPanel {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 270px;
-    background: rgba(255,255,255,0.95);
+    z-index: 500;
+    background: white;
     padding: 10px;
-    border-top: 1px solid #ccc;
-    box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
-    font-size: 13px;
-  }
-
-  #map {
-    height: 100%;
-    width: 100%;
-  }
-
-  .layer-item {
-    margin: 6px 0;
-  }
+    border-radius: 5px;
+    max-height: 90%;
+    overflow-y: auto;
+    box-shadow: 0 0 6px rgba(0,0,0,0.4);
+}
+#info {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 500;
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    width: 300px;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 0 6px rgba(0,0,0,0.4);
+}
+.layer-toggle {
+    margin-bottom: 5px;
+}
+.toggle-button {
+    display: none;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 510;
+    background: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.4);
+    cursor: pointer;
+}
+@media (max-width: 768px) {
+    #sidebar { display: none; }
+    .toggle-button { display: block; }
+}
 </style>
+<title>Leaflet Map with Sidebar</title>
 </head>
-
 <body>
-<button id="toggleSidebar">☰ Layers</button>
-
-<div id="sidebar">
-  <h3>Map Layers</h3>
-  <div id="layerControls"></div>
-  <div id="infoPanel"><b>Feature Info:</b><br><span id="featureInfo">Click a feature to view attributes.</span></div>
-</div>
-
 <div id="map"></div>
+<div class="toggle-button" onclick="toggleSidebar()">☰ Layers</div>
+<div id="sidebar">
+    <div class="layer-toggle"><input type="checkbox" id="layer_Lwardboundary" checked> L Ward Boundary</div>
+    <div class="layer-toggle"><input type="checkbox" id="layer_roads" checked> Roads</div>
+    <div class="layer-toggle"><input type="checkbox" id="layer_buildings" checked> Buildings</div>
+    <div class="layer-toggle"><input type="checkbox" id="layer_vegetation" checked> Vegetation</div>
+    <div class="layer-toggle"><input type="checkbox" id="layer_coldhot1" checked> Cold/Hot Nagar</div>
+    <div class="layer-toggle"><input type="checkbox" id="layer_coldhot2" checked> Cold/Hot Zones</div>
+</div>
+<div id="info">Click on a feature to see its attributes</div>
 
-<!-- QGIS2WEB dependencies -->
-<script src="js/qgis2web_expressions.js"></script>
 <script src="js/leaflet.js"></script>
-<script src="js/L.Control.Layers.Tree.min.js"></script>
 <script src="js/L.Control.Locate.min.js"></script>
-<script src="js/leaflet.rotatedMarker.js"></script>
-<script src="js/leaflet.pattern.js"></script>
-<script src="js/leaflet-hash.js"></script>
+<script src="js/L.Control.Layers.Tree.min.js"></script>
 <script src="js/Autolinker.min.js"></script>
-<script src="js/rbush.min.js"></script>
-<script src="js/labelgun.min.js"></script>
-<script src="js/labels.js"></script>
-<script src="js/leaflet.photon.js"></script>
-<script src="js/leaflet-measure.js"></script>
 
-<!-- Your data -->
 <script src="data/Lwardboundary_1.js"></script>
 <script src="data/roads_merged_3.js"></script>
-<script src="data/cold_hot_neighbourhood_nagar_4.js"></script>
-<script src="data/cold_hot_neighbourhood_5.js"></script>
 <script src="data/building_140725_6.js"></script>
 <script src="data/vegetation_7.js"></script>
+<script src="data/cold_hot_neighbourhood_nagar_4.js"></script>
+<script src="data/cold_hot_neighbourhood_5.js"></script>
 
 <script>
-var map = L.map('map', {
-  zoomControl: true,
-  maxZoom: 22,
-  minZoom: 10
-}).setView([19.07, 72.88], 13);
+var map = L.map('map', { zoomControl:false, maxZoom:28, minZoom:10 })
+    .fitBounds([[19.1037,72.8798],[19.1193,72.9071]]);
+var autolinker = new Autolinker({truncate:{length:30,location:'smart'}});
 
-// --- Base map ---
-var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
-}).addTo(map);
+var info = document.getElementById('info');
 
-// --- Layer styling ---
-function style_Lwardboundary_1() {
-  return { color: 'red', weight: 3, fillOpacity: 0 };
+function onEachFeature(feature, layer) {
+    layer.on({
+        click: function(e) {
+            let content = "<table>";
+            for (const key in feature.properties) {
+                content += "<tr><th>"+key+"</th><td>"+feature.properties[key]+"</td></tr>";
+            }
+            content += "</table>";
+            info.innerHTML = content;
+        }
+    });
 }
 
-function style_roads_merged_3() {
-  return { color: 'black', weight: 1.5 };
-}
+// --- Layers ---
 
-function style_building_140725_6() {
-  return { color: '#666', fillColor: '#999', fillOpacity: 0.8, weight: 0.5 };
-}
-
-function style_vegetation_7() {
-  return { color: 'green', fillColor: 'green', weight: 0, radius: 3, fillOpacity: 0.9 };
-}
-
-/* ✅ Updated: Bold black outline for Cold/Hot Nagar */
-function style_cold_hot_neighbourhood_nagar_4() {
-  return {
-    color: 'black',
-    weight: 4,          // thicker outline
-    fillOpacity: 0,     // transparent fill
-    dashArray: 'none'
-  };
-}
-
-/* ✅ Bold black outline for Cold/Hot Zones too */
-function style_cold_hot_neighbourhood_5() {
-  return {
-    color: 'black',
-    weight: 4,
-    fillOpacity: 0,
-    dashArray: 'none'
-  };
-}
-
-// --- GeoJSON Layers ---
-var layer_Lwardboundary_1 = L.geoJson(json_Lwardboundary_1, { style: style_Lwardboundary_1 }).addTo(map);
-var layer_roads_merged_3 = L.geoJson(json_roads_merged_3, { style: style_roads_merged_3 }).addTo(map);
-var layer_cold_hot_neighbourhood_nagar_4 = L.geoJson(json_cold_hot_neighbourhood_nagar_4, { style: style_cold_hot_neighbourhood_nagar_4 }).addTo(map);
-var layer_cold_hot_neighbourhood_5 = L.geoJson(json_cold_hot_neighbourhood_5, { style: style_cold_hot_neighbourhood_5 }).addTo(map);
-var layer_building_140725_6 = L.geoJson(json_building_140725_6, { style: style_building_140725_6 }).addTo(map);
-var layer_vegetation_7 = L.geoJson(json_vegetation_7, {
-  pointToLayer: function (feature, latlng) {
-    return L.circleMarker(latlng, style_vegetation_7());
-  }
-}).addTo(map);
-
-// --- Sidebar Layer Control ---
-var layers = {
-  "L Ward Boundary": layer_Lwardboundary_1,
-  "Roads": layer_roads_merged_3,
-  "Cold/Hot Neighbourhood (Nagar)": layer_cold_hot_neighbourhood_nagar_4,
-  "Cold/Hot Zones": layer_cold_hot_neighbourhood_5,
-  "Buildings": layer_building_140725_6,
-  "Vegetation": layer_vegetation_7
-};
-
-var layerControls = document.getElementById("layerControls");
-for (const [name, layer] of Object.entries(layers)) {
-  const div = document.createElement("div");
-  div.classList.add("layer-item");
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.checked = map.hasLayer(layer);
-  checkbox.onchange = function() {
-    if (this.checked) map.addLayer(layer);
-    else map.removeLayer(layer);
-  };
-  div.appendChild(checkbox);
-  const label = document.createElement("label");
-  label.innerHTML = " " + name;
-  div.appendChild(label);
-  layerControls.appendChild(div);
-}
-
-// --- Feature Info on click ---
-function onFeatureClick(e) {
-  var props = e.target.feature.properties;
-  var info = '';
-  for (var key in props) {
-    info += '<b>' + key + ':</b> ' + props[key] + '<br>';
-  }
-  document.getElementById('featureInfo').innerHTML = info;
-}
-
-for (const layer of Object.values(layers)) {
-  layer.eachLayer(function(featureLayer) {
-    featureLayer.on('click', onFeatureClick);
-  });
-}
-
-// --- Sidebar toggle ---
-document.getElementById("toggleSidebar").onclick = function() {
-  document.getElementById("sidebar").classList.toggle("collapsed");
-};
-</script>
-</body>
-</html>
+var
