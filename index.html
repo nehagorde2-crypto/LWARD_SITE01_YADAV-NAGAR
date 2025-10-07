@@ -7,7 +7,6 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
 
-    <!-- CSS -->
     <link rel="stylesheet" href="css/leaflet.css">
     <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
     <link rel="stylesheet" href="css/L.Control.Locate.min.css">
@@ -17,14 +16,14 @@
     <link rel="stylesheet" href="css/leaflet-measure.css">
 
     <style>
-        html, body, #map { width: 100%; height: 100%; padding: 0; margin: 0; }
+        html, body, #map { width:100%; height:100%; margin:0; padding:0; }
     </style>
+
     <title>Map with UHI Overlay</title>
 </head>
 <body>
 <div id="map"></div>
 
-<!-- JS Libraries -->
 <script src="js/qgis2web_expressions.js"></script>
 <script src="js/leaflet.js"></script>
 <script src="js/L.Control.Layers.Tree.min.js"></script>
@@ -48,19 +47,16 @@
 <script src="data/vegetation_7.js"></script>
 
 <script>
-var map = L.map('map', { zoomControl:false, maxZoom:28, minZoom:10 })
+var map = L.map('map', {zoomControl:false, maxZoom:28, minZoom:10})
     .fitBounds([[19.10370203749666,72.87981991479478],[19.11931231922223,72.90719733841283]]);
-
 var hash = new L.Hash(map);
 map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
 
-var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+var autolinker = new Autolinker({truncate:{length:30,location:'smart'}});
 
 // Zoom and locate controls
 L.control.zoom({position:'topleft'}).addTo(map);
 L.control.locate({locateOptions:{maxZoom:19}}).addTo(map);
-
-// Measurement tool
 var measureControl = new L.Control.Measure({
     position: 'topleft',
     primaryLengthUnit: 'meters',
@@ -69,45 +65,58 @@ var measureControl = new L.Control.Measure({
     secondaryAreaUnit: 'hectares'
 });
 measureControl.addTo(map);
-document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
-document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML='';
+document.getElementsByClassName('leaflet-control-measure-toggle')[0].className+=' fas fa-ruler';
 
-// Bounds group
 var bounds_group = new L.featureGroup([]);
 
-// Base layer - Google Satellite
+// Base Google Satellite
 map.createPane('pane_GoogleSatellite_0');
 map.getPane('pane_GoogleSatellite_0').style.zIndex = 400;
 var layer_GoogleSatellite_0 = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-    pane: 'pane_GoogleSatellite_0',
-    opacity: 1.0,
-    attribution: '',
-    minZoom: 10,
-    maxZoom: 28
-});
-map.addLayer(layer_GoogleSatellite_0);
+    pane:'pane_GoogleSatellite_0', opacity:1.0, minZoom:10, maxZoom:28
+}).addTo(map);
 
-//////////////////////////
-// OLD UHI IMAGE OVERLAY //
-//////////////////////////
+// --- Add all vector layers (roads, buildings, vegetation, cold/hot zones) ---
+
+// Example: Buildings
+map.createPane('pane_building_140725_6'); 
+map.getPane('pane_building_140725_6').style.zIndex = 410; // above base
+map.getPane('pane_building_140725_6').style['mix-blend-mode'] = 'normal';
+
+function style_building(feature) {
+    var fillColor='rgba(43,131,186,1.0)'; // default
+    switch(String(feature.properties['bldg_use'])){
+        case 'commercial': fillColor='rgba(191,145,85,1.0)'; break;
+        case 'hospital': fillColor='rgba(232,91,59,1.0)'; break;
+        case 'industrial': fillColor='rgba(155,111,91,1.0)'; break;
+        case 'mixed': fillColor='rgba(227,203,193,1.0)'; break;
+        case 'res': fillColor='rgba(197,197,197,1.0)'; break;
+        case 'resi_construction': fillColor='rgba(236,247,185,1.0)'; break;
+        case 'residential': fillColor='rgba(199,232,173,1.0)'; break;
+        case 'temple': fillColor='rgba(157,211,166,1.0)'; break;
+        case 'uc': fillColor='rgba(100,171,176,1.0)'; break;
+    }
+    return {pane:'pane_building_140725_6', opacity:1, color:'rgba(255,255,255,1.0)', weight:1,
+            fill:true, fillOpacity:1, fillColor:fillColor, interactive:true};
+}
+
+var layer_buildings_6 = new L.geoJson(json_building_140725_6, {
+    style: style_building
+}).addTo(map);
+bounds_group.addLayer(layer_buildings_6);
+
+// TODO: Add other vector layers like roads, vegetation, cold/hot zones in similar way
+// Make sure pane zIndex > 400 (above base)
+
+// --- UHI overlay from old code ---
 map.createPane('pane_Lwarduhi_2');
-map.getPane('pane_Lwarduhi_2').style.zIndex = 402;
+map.getPane('pane_Lwarduhi_2').style.zIndex = 405; // below buildings/roads
 var img_Lwarduhi_2 = 'data/Lwarduhi_2.png';
 var img_bounds_Lwarduhi_2 = [[19.047338295,72.863520505],[19.129264649,72.908256606]];
-var layer_Lwarduhi_2 = new L.imageOverlay(img_Lwarduhi_2, img_bounds_Lwarduhi_2, {pane:'pane_Lwarduhi_2'});
-bounds_group.addLayer(layer_Lwarduhi_2);
-map.addLayer(layer_Lwarduhi_2);
+var layer_Lwarduhi_2 = L.imageOverlay(img_Lwarduhi_2, img_bounds_Lwarduhi_2, {pane:'pane_Lwarduhi_2', opacity:0.7}).addTo(map);
 
-//////////////////////////
-// ADD YOUR NEW LAYERS  //
-//////////////////////////
-// Include all your new layers exactly as they are (roads, buildings, vegetation, cold/hot zones, layer tree, sidebar...)
-// Example:
-// map.createPane('pane_roads_merged_3'); ...
-// var layer_roads_merged_3 = new L.geoJson(json_roads_merged_3, {...});
-// bounds_group.addLayer(layer_roads_merged_3); map.addLayer(layer_roads_merged_3);
-// Similarly add buildings, vegetation, cold/hot zones from your new code.
-
+L.ImageOverlay.include({getBounds:function(){return this._bounds;}});
 </script>
 </body>
 </html>
