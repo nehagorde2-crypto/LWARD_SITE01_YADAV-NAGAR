@@ -18,6 +18,7 @@
       font-family: 'Segoe UI', sans-serif;
     }
 
+    /* --- Collapsible Sidebar --- */
     #sidebar {
       position: absolute;
       top: 0;
@@ -29,15 +30,29 @@
       padding: 10px;
       overflow-y: auto;
       z-index: 1000;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      box-shadow: 2px 0 5px rgba(0,0,0,0.15);
+      transition: transform 0.3s ease;
     }
 
-    #sidebar h3 {
-      margin: 10px 0;
-      font-size: 16px;
-      color: #333;
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 5px;
+    #sidebar.collapsed {
+      transform: translateX(-250px);
+    }
+
+    #toggle-btn {
+      position: absolute;
+      top: 15px;
+      left: 260px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 6px 10px;
+      cursor: pointer;
+      z-index: 1100;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+    }
+
+    #toggle-btn:hover {
+      background: #f0f0f0;
     }
 
     #map {
@@ -46,6 +61,19 @@
       right: 0;
       bottom: 0;
       left: 250px;
+      transition: left 0.3s ease;
+    }
+
+    #map.fullwidth {
+      left: 0;
+    }
+
+    #sidebar h3 {
+      margin: 10px 0;
+      font-size: 16px;
+      color: #333;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
     }
 
     #infoPanel {
@@ -74,11 +102,24 @@
       font-weight: 600;
       color: #333;
     }
+
+    /* Small screens: start collapsed */
+    @media (max-width: 768px) {
+      #sidebar {
+        transform: translateX(-250px);
+      }
+      #map {
+        left: 0;
+      }
+      #toggle-btn {
+        left: 10px;
+      }
+    }
   </style>
 </head>
 
 <body>
-  <!-- Sidebar -->
+  <!-- Collapsible Sidebar -->
   <div id="sidebar">
     <h3>Layers</h3>
     <div id="layerList">
@@ -96,7 +137,7 @@
     </div>
   </div>
 
-  <!-- Map -->
+  <button id="toggle-btn">☰ Layers</button>
   <div id="map"></div>
 
   <!-- Scripts -->
@@ -130,18 +171,45 @@
       minZoom: 1
     }).setView([19.06, 72.88], 13);
 
-    // Basemap (you can change this)
+    // Basemap
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Add layers from QGIS2Web
-    var layer_Lwardboundary = new L.geoJson(json_Lwardboundary_1, {});
-    var layer_Roads = new L.geoJson(json_roads_merged_3, {});
-    var layer_HotNagar = new L.geoJson(json_cold_hot_neighbourhood_nagar_4, {});
-    var layer_Hot = new L.geoJson(json_cold_hot_neighbourhood_5, {});
-    var layer_Buildings = new L.geoJson(json_building_140725_6, {});
-    var layer_Vegetation = new L.geoJson(json_vegetation_7, {});
+    // --- Custom Styled Layers ---
+    var layer_Lwardboundary = new L.geoJson(json_Lwardboundary_1, {
+      style: { color: "red", weight: 2, fillOpacity: 0 }
+    });
+
+    var layer_Roads = new L.geoJson(json_roads_merged_3, {
+      style: { color: "black", weight: 1.5 }
+    });
+
+    var layer_HotNagar = new L.geoJson(json_cold_hot_neighbourhood_nagar_4, {
+      style: { color: "#ff7f00", weight: 1 }
+    });
+
+    var layer_Hot = new L.geoJson(json_cold_hot_neighbourhood_5, {
+      style: { color: "#ffcc00", weight: 1 }
+    });
+
+    var layer_Buildings = new L.geoJson(json_building_140725_6, {
+      style: { color: "#666666", fillColor: "#999999", fillOpacity: 0.8, weight: 0.5 }
+    });
+
+    var layer_Vegetation = new L.geoJson(json_vegetation_7, {
+      pointToLayer: function(feature, latlng) {
+        return L.circleMarker(latlng, {
+          radius: 4,
+          fillColor: "green",
+          color: "#006400",
+          weight: 0.5,
+          opacity: 1,
+          fillOpacity: 0.8
+        });
+      },
+      style: { color: "green" }
+    });
 
     // Add all initially
     map.addLayer(layer_Lwardboundary);
@@ -151,7 +219,7 @@
     map.addLayer(layer_Buildings);
     map.addLayer(layer_Vegetation);
 
-    // --- Toggle logic ---
+    // --- Layer Toggle ---
     const toggleLayer = (checkboxId, layer) => {
       document.getElementById(checkboxId).addEventListener("change", function() {
         if (this.checked) map.addLayer(layer);
@@ -166,7 +234,7 @@
     toggleLayer("chk_buildings", layer_Buildings);
     toggleLayer("chk_vegetation", layer_Vegetation);
 
-    // --- Feature Info panel ---
+    // --- Feature Info Panel ---
     function showFeatureInfo(props) {
       let html = "<table>";
       for (let key in props) {
@@ -184,13 +252,24 @@
       });
     }
 
-    // Attach click listeners
     attachClickInfo(layer_Lwardboundary);
     attachClickInfo(layer_Roads);
     attachClickInfo(layer_HotNagar);
     attachClickInfo(layer_Hot);
     attachClickInfo(layer_Buildings);
     attachClickInfo(layer_Vegetation);
+
+    // --- Collapsible Sidebar Button ---
+    const sidebar = document.getElementById("sidebar");
+    const mapDiv = document.getElementById("map");
+    const toggleBtn = document.getElementById("toggle-btn");
+
+    toggleBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("collapsed");
+      mapDiv.classList.toggle("fullwidth");
+      // reposition button when collapsed
+      toggleBtn.style.left = sidebar.classList.contains("collapsed") ? "10px" : "260px";
+    });
   </script>
 </body>
 </html>
