@@ -98,7 +98,6 @@ html, body {
 <script>
 var map = L.map('map', { zoomControl:false, maxZoom:28, minZoom:10 })
     .fitBounds([[19.1037,72.8798],[19.1193,72.9071]]);
-var autolinker = new Autolinker({truncate:{length:30,location:'smart'}});
 
 var info = document.getElementById('info');
 
@@ -117,4 +116,76 @@ function onEachFeature(feature, layer) {
 
 // --- Layers ---
 
-var
+var layer_Lwardboundary = L.geoJSON(Lwardboundary_1, {
+    style: {color: "blue", weight: 2, fillOpacity: 0.1},
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+var layer_roads = L.geoJSON(roads_merged_3, {
+    style: {color: "gray", weight: 1},
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+var layer_buildings = L.geoJSON(building_140725_6, {
+    style: {color: "brown", weight: 1, fillOpacity: 0.7},
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+var layer_vegetation = L.geoJSON(vegetation_7, {
+    style: {color: "green", weight: 1, fillOpacity: 0.5},
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+var layer_coldhot1 = L.geoJSON(cold_hot_neighbourhood_nagar_4, {
+    style: function(feature) {
+        return {
+            color: "black",
+            weight: 2,
+            fillColor: feature.properties.type === "cold" ? "#00f" : "#f00",
+            fillOpacity: 0.4
+        };
+    },
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+var layer_coldhot2 = L.geoJSON(cold_hot_neighbourhood_5, {
+    style: function(feature) {
+        return {
+            color: "black",
+            weight: 2,
+            fillColor: feature.properties.type === "cold" ? "#00f" : "#f00",
+            fillOpacity: 0.4
+        };
+    },
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+// --- Sidebar Toggle ---
+function toggleSidebar() {
+    var sidebar = document.getElementById('sidebar');
+    if (sidebar.style.display === 'block' || sidebar.style.display === '') {
+        sidebar.style.display = 'none';
+    } else {
+        sidebar.style.display = 'block';
+    }
+}
+
+// --- Layer Checkboxes ---
+function setupLayerToggle(id, layer) {
+    document.getElementById(id).addEventListener('change', function() {
+        if (this.checked) map.addLayer(layer); else map.removeLayer(layer);
+    });
+}
+
+setupLayerToggle('layer_Lwardboundary', layer_Lwardboundary);
+setupLayerToggle('layer_roads', layer_roads);
+setupLayerToggle('layer_buildings', layer_buildings);
+setupLayerToggle('layer_vegetation', layer_vegetation);
+setupLayerToggle('layer_coldhot1', layer_coldhot1);
+setupLayerToggle('layer_coldhot2', layer_coldhot2);
+
+// --- Locate Control ---
+L.control.locate({position: 'topleft'}).addTo(map);
+</script>
+</body>
+</html>
